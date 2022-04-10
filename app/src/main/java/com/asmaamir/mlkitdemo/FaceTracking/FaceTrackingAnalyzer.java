@@ -34,6 +34,10 @@ public class FaceTrackingAnalyzer implements ImageAnalysis.Analyzer {
     private float heightScaleFactor = 1.0f;
     private FirebaseVisionImage fbImage;
     private CameraX.LensFacing lens;
+    public int minWidth = 9999;
+    public int minHeight = 9999;
+    public int maxWidth = 0;
+    public int maxHeight = 0;
 
     FaceTrackingAnalyzer(TextureView tv, ImageView iv, CameraX.LensFacing lens) {
         this.tv = tv;
@@ -59,9 +63,11 @@ public class FaceTrackingAnalyzer implements ImageAnalysis.Analyzer {
                 .enableTracking()
                 .build();
         FirebaseVisionFaceDetector faceDetector = FirebaseVision.getInstance().getVisionFaceDetector(detectorOptions);
+        long start = System.currentTimeMillis();
         faceDetector.detectInImage(fbImage).addOnSuccessListener(firebaseVisionFaces -> {
+            long end = System.currentTimeMillis();
             if (!firebaseVisionFaces.isEmpty()) {
-                processFaces(firebaseVisionFaces);
+                processFaces(firebaseVisionFaces,start,end);
             } else {
                 canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.MULTIPLY);
             }
@@ -80,7 +86,7 @@ public class FaceTrackingAnalyzer implements ImageAnalysis.Analyzer {
         heightScaleFactor = canvas.getHeight() / (fbImage.getBitmap().getHeight() * 1.0f);
     }
 
-    private void processFaces(List<FirebaseVisionFace> faces) {
+    private void processFaces(List<FirebaseVisionFace> faces,long start,long end) {
         for (FirebaseVisionFace face : faces) {
 
             Rect box = new Rect((int) translateX(face.getBoundingBox().left),
@@ -100,7 +106,30 @@ public class FaceTrackingAnalyzer implements ImageAnalysis.Analyzer {
                     + " left: " + face.getBoundingBox().left
                     + " bottom: " + face.getBoundingBox().bottom
                     + " right: " + face.getBoundingBox().right);
-
+            int width = (int) translateX(face.getBoundingBox().right) - (int) translateX(face.getBoundingBox().left);
+            int height =(int) translateX(face.getBoundingBox().bottom) - (int) translateX(face.getBoundingBox().top);
+            if(width<0){
+                width*=-1;
+            }
+            if(height<0){
+                height*=-1;
+            }
+            if(minWidth>width){
+                minWidth = width;
+            }
+            if(minHeight>height){
+                minHeight = height;
+            }
+            if(maxWidth<width){
+                maxWidth = width;
+            }
+            if(maxHeight<height){
+                maxHeight = height;
+            }
+            canvas.drawText("Time : "+String.valueOf(end-start)+" Min : "+String.valueOf(minWidth)+"X"+String.valueOf(minHeight)+" Max : "+String.valueOf(maxWidth)+"X"+String.valueOf(maxHeight),
+                    10,
+                    100,
+                    linePaint);
             canvas.drawRect(box, linePaint);
         }
         iv.setImageBitmap(bitmap);
